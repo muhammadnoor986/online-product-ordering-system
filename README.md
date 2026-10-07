@@ -38,6 +38,24 @@ npm run dev
 You should see `MongoDB connected` and `Server running on http://localhost:5000`.
 Test it: open http://localhost:5000/api/health
 
+### Authentication setup (Phase 2)
+
+Add these to `backend/.env` (see `backend/.env.example`):
+
+- `JWT_SECRET` – a long random string. Generate one with:
+  `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+- `JWT_EXPIRES_IN` – token lifetime, e.g. `1d`
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` – your first admin account
+
+Then create the admin (safe to run again; it never creates a duplicate):
+
+```bash
+npm run seed:admin
+```
+
+Auth endpoints: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/me` (needs `Authorization: Bearer <token>`).
+New signups are always `customer`; only the seed script creates an `admin`.
+
 ## 3. Run the frontend
 
 In a second terminal:

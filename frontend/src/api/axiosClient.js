@@ -6,4 +6,13 @@ const axiosClient = axios.create({
   timeout: 10000,
 });
 
+// Automatically adds "Authorization: Bearer <token>" when a user is logged in
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export default axiosClient;
