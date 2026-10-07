@@ -64,10 +64,21 @@ function ProductForm({ product = null, categories, onSubmit, onCancel }) {
       name: values.name.trim(),
       description: values.description.trim(),
       price: Number(values.price),
-      stock: Number(values.stock),
       imageUrl: values.imageUrl.trim(),
       category: values.category,
     };
+
+    const newStock = Number(values.stock);
+    if (!isEditing) {
+      data.stock = newStock;
+    } else if (newStock !== product.stock) {
+      // Orders change stock while this form is open. Send the stock only if the admin really
+      // changed it, together with the value they saw, so the server can refuse a stale edit
+      // instead of silently bringing back stock that was already sold.
+      data.stock = newStock;
+      data.previousStock = product.stock;
+    }
+
     // New products are always active; the checkbox only appears when editing
     if (isEditing) data.isActive = values.isActive;
 

@@ -37,6 +37,10 @@ const validateProductFields = (body = {}, requireAll) => {
   if (requireAll || has("stock")) {
     if (!isValidStock(body.stock)) errors.push("Stock must be a whole number of 0 or more");
   }
+  // previousStock = the stock the admin saw when the form was opened (see updateProduct)
+  if (has("previousStock") && !isValidStock(body.previousStock)) {
+    errors.push("previousStock must be a whole number of 0 or more");
+  }
   if (has("imageUrl") && !isValidImageUrl(body.imageUrl)) {
     errors.push("Image URL must start with http:// or https://");
   }
@@ -234,7 +238,38 @@ const updateProduct = async (req, res, next) => {
       await ensureCategoryExists(req.body.category);
     }
 
-    const editableFields = ["name", "description", "price", "stock", "imageUrl", "category", "isActive"];
+    // STOCK IS SPECIAL. Orders change stock all the time, so an edit form that was opened a while
+    // ago holds an old number. Saving that old number would silently bring back stock that was
+    // already sold. So a stock change is a compare-and-set: the client sends the new `stock`
+    // together with `previousStock` (what it saw), and the change is only applied if the stock in
+    // the database is still exactly that. Sending the stock it already has changes nothing.
+    const { stock, previousStock } = req.body;
+    if (stock !== undefined && stock !== product.stock) {
+      if (previousStock === undefined) {
+        throw new AppError(
+          "To change the stock you must also send previousStock (the stock you last saw)",
+          400
+        );
+      }
+
+      const result = await Product.updateOne(
+        { _id: product._id, stock: previousStock }, // one atomic step: check and change together
+        { $set: { stock } }
+      );
+      if (result.matchedCount === 0) {
+        const current = await Product.findById(product._id).select("stock");
+        throw new AppError(
+          `The stock changed since you loaded this product (it is now ${current ? current.stock : "unknown"}). ` +
+            "Reload the product and try again.",
+          409,
+          [{ reason: "stock_changed", currentStock: current ? current.stock : null }]
+        );
+      }
+    }
+
+    // Every other field is a plain edit. `stock` is deliberately NOT in this list: it was
+    // handled above, and assigning it here could overwrite a newer value.
+    const editableFields = ["name", "description", "price", "imageUrl", "category", "isActive"];
     editableFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         product[field] = req.body[field];
@@ -242,12 +277,14 @@ const updateProduct = async (req, res, next) => {
     });
 
     await product.save();
-    await product.populate("category", "name");
+
+    // Read the product again so the response shows the real, current stock
+    const updatedProduct = await Product.findById(product._id).populate("category", "name");
 
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      product,
+      product: updatedProduct,
     });
   } catch (error) {
     next(error);

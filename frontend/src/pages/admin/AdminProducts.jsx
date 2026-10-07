@@ -93,7 +93,14 @@ function AdminProducts() {
     const editedProduct = formState.product;
 
     if (editedProduct) {
-      await axiosClient.put(`/products/${editedProduct._id}`, data);
+      try {
+        await axiosClient.put(`/products/${editedProduct._id}`, data);
+      } catch (error) {
+        // 409 = the stock changed since this form was opened: refresh the list so that
+        // opening Edit again shows the real numbers (the form itself shows the message)
+        if (error.response && error.response.status === 409) reloadList();
+        throw error;
+      }
       setNotice({ type: "success", text: `"${data.name}" was updated.` });
     } else {
       await axiosClient.post("/products", data);

@@ -16,6 +16,8 @@ const User = require("../src/models/User");
 const Category = require("../src/models/Category");
 const Product = require("../src/models/Product");
 const Cart = require("../src/models/Cart");
+const Order = require("../src/models/Order");
+const orderNumbers = require("../src/utils/generateOrderNumber");
 const generateToken = require("../src/utils/generateToken");
 
 const TEST_DB_NAME = process.env.TEST_DB_NAME || "online_production_test";
@@ -48,7 +50,7 @@ const connectTestDatabase = async () => {
   }
 
   // Create the unique indexes (a brand new database has none yet)
-  await Promise.all([User.init(), Category.init(), Product.init(), Cart.init()]);
+  await Promise.all([User.init(), Category.init(), Product.init(), Cart.init(), Order.init()]);
 };
 
 // Starts the real Express app on a random free port
@@ -107,10 +109,60 @@ const createProduct = async (category, overrides = {}) =>
 const cleanup = async () => {
   const users = await User.find({ email: new RegExp(`^${runTag}-`) }).select("_id");
   const userIds = users.map((user) => user._id);
+  await Order.deleteMany({ user: { $in: userIds } });
   await Cart.deleteMany({ user: { $in: userIds } });
   await User.deleteMany({ _id: { $in: userIds } });
   await Product.deleteMany({ name: new RegExp(`^T${runTag} `) });
   await Category.deleteMany({ name: new RegExp(`^T${runTag} `) });
+};
+
+// Valid delivery details for checkout. Pass overrides to break or change a field.
+const validDelivery = (overrides = {}) => ({
+  fullName: "Test Customer",
+  phone: "+92 300 1234567",
+  addressLine1: "House 12, Street 5, Test Town",
+  addressLine2: "",
+  city: "Lahore",
+  postalCode: "54000",
+  notes: "",
+  ...overrides,
+});
+
+// Puts lines straight into a customer cart (faster than adding them one by one through the API).
+// lines: [{ product, quantity }]
+const putInCart = async (customer, lines) => {
+  await Cart.deleteMany({ user: customer.user._id });
+  return Cart.create({
+    user: customer.user._id,
+    items: lines.map((line) => ({ product: line.product._id, quantity: line.quantity })),
+  });
+};
+
+// Inserts a valid order straight into the database (no stock changes), for list/cancel tests.
+// lines: [{ product, quantity }]
+const insertOrder = (customer, lines, overrides = {}) => {
+  const items = lines.map((line) => ({
+    product: line.product._id,
+    name: line.product.name,
+    imageUrl: line.product.imageUrl || "",
+    price: line.product.price,
+    quantity: line.quantity,
+    lineTotal: Math.round(line.product.price * line.quantity * 100) / 100,
+  }));
+  const subtotal = Math.round(items.reduce((sum, item) => sum + item.lineTotal, 0) * 100) / 100;
+  return Order.create({
+    orderNumber: orderNumbers.generateOrderNumber(),
+    user: customer.user._id,
+    customer: { name: customer.user.name, email: customer.user.email },
+    items,
+    delivery: validDelivery({ phone: "+92 300 7654321", addressLine1: "SECRET-ADDRESS-LINE-1" }),
+    paymentMethod: "cod",
+    subtotal,
+    shippingFee: 0,
+    total: subtotal,
+    statusHistory: [{ status: "pending", changedAt: new Date(), changedBy: customer.user._id }],
+    ...overrides,
+  });
 };
 
 const disconnect = () => mongoose.disconnect();
@@ -124,6 +176,9 @@ module.exports = {
   createUser,
   createCategory,
   createProduct,
+  validDelivery,
+  putInCart,
+  insertOrder,
   cleanup,
   disconnect,
 };
