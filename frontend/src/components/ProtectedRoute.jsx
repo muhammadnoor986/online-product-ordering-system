@@ -3,8 +3,14 @@ import { useAuth } from "../context/AuthContext.jsx";
 
 // Wrap a page with this to make it available only to logged-in users:
 // <Route path="/x" element={<ProtectedRoute><SomePage /></ProtectedRoute>} />
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+//
+// Add "adminOnly" to also require the admin role:
+// <Route path="/admin/x" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
+//
+// Note: this only controls what the page shows. The API itself also checks the role,
+// so a customer cannot change data by calling the API directly.
+function ProtectedRoute({ children, adminOnly = false }) {
+  const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
     return <p className="container">Loading...</p>;
@@ -12,6 +18,10 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (adminOnly && user.role !== "admin") {
+    return <Navigate to="/" replace />;
   }
 
   return children;

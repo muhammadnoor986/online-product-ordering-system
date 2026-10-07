@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const healthRoutes = require("./routes/healthRoutes");
 const authRoutes = require("./routes/authRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const productRoutes = require("./routes/productRoutes");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -12,6 +14,8 @@ app.use(express.json());
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
 
 // These two must stay last
 app.use(notFound);

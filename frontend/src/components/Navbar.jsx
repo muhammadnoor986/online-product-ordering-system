@@ -11,6 +11,13 @@ function Navbar() {
       </Link>
 
       <nav className="navbar-links">
+        <Link to="/">Products</Link>
+        {isAuthenticated && user.role === "admin" && (
+          <>
+            <Link to="/admin/products">Admin Products</Link>
+            <Link to="/admin/categories">Admin Categories</Link>
+          </>
+        )}
         {isAuthenticated ? (
           <>
             <span className="navbar-user">
