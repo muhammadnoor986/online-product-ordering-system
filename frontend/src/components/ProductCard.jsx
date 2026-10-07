@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import ProductImage from "./ProductImage.jsx";
+import AddToCartButton from "./AddToCartButton.jsx";
 import formatPrice from "../utils/formatPrice.js";
 import getStockStatus from "../utils/getStockStatus.js";
 
@@ -21,9 +22,12 @@ function ProductCard({ product }) {
         <p className="product-price">{formatPrice(product.price)}</p>
         <span className={`badge ${stockStatus.className}`}>{stockStatus.label}</span>
 
-        <Link to={detailsPath} className="button button-link">
-          View Details
-        </Link>
+        <div className="product-card-actions">
+          <Link to={detailsPath} className="button button-link">
+            View Details
+          </Link>
+          <AddToCartButton product={product} />
+        </div>
       </div>
     </article>
   );

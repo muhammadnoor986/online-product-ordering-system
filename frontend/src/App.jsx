@@ -6,6 +6,7 @@ import ProductDetails from "./pages/ProductDetails.jsx";
 import HealthPage from "./pages/HealthPage.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
+import Cart from "./pages/Cart.jsx";
 import AdminProducts from "./pages/admin/AdminProducts.jsx";
 import AdminCategories from "./pages/admin/AdminCategories.jsx";
 
@@ -19,6 +20,15 @@ function App() {
         <Route path="/health" element={<HealthPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
+        <Route
+          path="/cart"
+          element={
+            <ProtectedRoute customerOnly>
+              <Cart />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/admin/products"

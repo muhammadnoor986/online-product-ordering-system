@@ -7,9 +7,12 @@ import { useAuth } from "../context/AuthContext.jsx";
 // Add "adminOnly" to also require the admin role:
 // <Route path="/admin/x" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
 //
+// Add "customerOnly" for pages that only customers use (like the cart). Admins are sent to "/".
+// <Route path="/cart" element={<ProtectedRoute customerOnly><Cart /></ProtectedRoute>} />
+//
 // Note: this only controls what the page shows. The API itself also checks the role,
 // so a customer cannot change data by calling the API directly.
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, adminOnly = false, customerOnly = false }) {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -21,6 +24,10 @@ function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   if (adminOnly && user.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
+  if (customerOnly && user.role !== "customer") {
     return <Navigate to="/" replace />;
   }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient.js";
 import ProductImage from "../components/ProductImage.jsx";
+import AddToCartButton from "../components/AddToCartButton.jsx";
 import formatPrice from "../utils/formatPrice.js";
 import getStockStatus from "../utils/getStockStatus.js";
 import getErrorMessage from "../utils/getErrorMessage.js";
@@ -96,6 +97,10 @@ function ProductDetails() {
           <p className="product-stock-line">
             Stock: {product.stock} {product.stock === 1 ? "unit" : "units"}
           </p>
+
+          <div className="product-details-cart">
+            <AddToCartButton product={product} />
+          </div>
 
           <h2 className="product-description-title">Description</h2>
           <p className="product-description">{product.description}</p>
