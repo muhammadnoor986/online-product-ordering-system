@@ -33,13 +33,25 @@ const errorHandler = (err, req, res, next) => {
     message = field ? `A record with this ${field} already exists` : "Duplicate value";
   }
 
+  // Mongoose: the document was changed by someone else since we loaded it
+  // (optimistic concurrency, used by the cart)
+  if (err.name === "VersionError") {
+    statusCode = 409;
+    message = "This data was changed at the same time by another request. Please reload and try again.";
+  }
+
   if (statusCode === 500) {
     console.error(err);
   }
 
-  res.status(statusCode).json({
-    message: statusCode === 500 ? "Internal server error" : message,
-  });
+  const body = { message: statusCode === 500 ? "Internal server error" : message };
+
+  // Optional extra information (only AppError sets it), never sent for server errors
+  if (statusCode !== 500 && err.details !== undefined) {
+    body.details = err.details;
+  }
+
+  res.status(statusCode).json(body);
 };
 
 module.exports = { notFound, errorHandler };

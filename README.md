@@ -56,6 +56,31 @@ npm run seed:admin
 Auth endpoints: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/me` (needs `Authorization: Bearer <token>`).
 New signups are always `customer`; only the seed script creates an `admin`.
 
+### Cart API (Phase 4A)
+
+All cart endpoints need a logged-in **customer** (admins get 403). The cart belongs to the logged-in user; ids are never taken from the request.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/cart` | the cart with current product data, line totals, subtotal and per-item `problem` flags |
+| `POST /api/cart/items` | add `{ "productId": "...", "quantity": 1 }` (adds to the quantity if already in the cart) |
+| `PUT /api/cart/items/:productId` | set `{ "quantity": 2 }` |
+| `DELETE /api/cart/items/:productId` | remove one product |
+| `DELETE /api/cart` | clear the cart |
+
+### Running the backend tests
+
+```bash
+cd backend
+npm test
+```
+
+The tests use Node's built-in test runner and run against a **separate database**
+(`online_production_test` on the same MongoDB server), never your normal data.
+You can change the name with `TEST_DB_NAME` in `backend/.env`, but the tests refuse to run
+if the name does not contain "test" or equals your development database.
+Test data is removed when the run finishes.
+
 ## 3. Run the frontend
 
 In a second terminal:
