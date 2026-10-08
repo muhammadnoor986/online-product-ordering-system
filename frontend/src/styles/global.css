@@ -1282,3 +1282,176 @@ main > .status {
     gap: 0.5rem;
   }
 }
+
+/* ---------- Admin orders (Phase 6) ---------- */
+
+/* Status filter tabs: one button per status, with how many orders it has */
+.status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.status-tab {
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.status-tab-active {
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.status-tab:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+/* Payment filter, sort and Clear button under the search box */
+.filters-row-orders {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+/* Customer and payment cells of the orders table */
+.admin-customer,
+.admin-payment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.admin-customer-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.admin-customer-email {
+  font-size: 0.85rem;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+.admin-payment {
+  align-items: flex-start;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 600px) {
+  .filters-row-orders {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .filters-row-orders {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+/* The stacked-card layout right-aligns the cells, so right-align these blocks too */
+@media (max-width: 899px) {
+  .admin-customer,
+  .admin-payment {
+    align-items: flex-end;
+  }
+}
+
+/* Admin order page: the left column (items, history) and the status history list */
+.order-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.status-history {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.status-history-item {
+  padding: 0.6rem 0 0.6rem 0.9rem;
+  border-left: 3px solid #cbd5e1;
+}
+
+.status-history-item + .status-history-item {
+  margin-top: 0.4rem;
+}
+
+.status-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.status-history-date {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.status-history-by {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.status-history-note {
+  margin: 0.3rem 0 0;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Admin order page: result of a status change and the confirmation box */
+.status-warning {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+.notice-list {
+  margin: 0.25rem 0 0.25rem 1.1rem;
+  padding: 0;
+}
+
+.order-actions {
+  margin: 1rem 0;
+}
+
+.action-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.action-confirm-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.action-confirm .status {
+  margin: 0;
+}
+
+/* Polish: keep amounts on one line, and show keyboard focus in the note box */
+.admin-table td[data-label="Total"] {
+  white-space: nowrap;
+}
+
+.action-confirm textarea:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}

@@ -30,6 +30,7 @@ function Navbar() {
           <>
             <Link to="/admin/products">Admin Products</Link>
             <Link to="/admin/categories">Admin Categories</Link>
+            <Link to="/admin/orders">Admin Orders</Link>
           </>
         )}
         {isAuthenticated ? (

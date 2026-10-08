@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import ProductImage from "../components/ProductImage.jsx";
+import OrderItemsList from "../components/OrderItemsList.jsx";
 import formatPrice from "../utils/formatPrice.js";
 import getErrorMessage from "../utils/getErrorMessage.js";
 import { capitalize, formatOrderDate, getPaymentMethodName, getStatusBadgeClass } from "../utils/orderDisplay.js";
@@ -125,20 +125,7 @@ function OrderDetails() {
       <div className="cart-layout">
         <section className="checkout-section" aria-labelledby="items-heading">
           <h2 id="items-heading">Items</h2>
-          <ul className="order-items">
-            {order.items.map((item) => (
-              <li key={item.productId} className="order-item">
-                <ProductImage imageUrl={item.imageUrl} name={item.name} className="order-item-image" />
-                <div className="order-item-info">
-                  <p className="order-item-name">{item.name}</p>
-                  <p className="order-item-detail">
-                    {item.quantity} &times; {formatPrice(item.price)}
-                  </p>
-                </div>
-                <p className="order-item-total">{formatPrice(item.lineTotal)}</p>
-              </li>
-            ))}
-          </ul>
+          <OrderItemsList items={order.items} />
         </section>
 
         <aside className="order-side">

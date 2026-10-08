@@ -86,3 +86,16 @@ export const validateDelivery = (values) => {
 
   return { errors, delivery };
 };
+
+// An admin's note on an order status change (optional, up to 300 characters, line breaks allowed).
+// Mirrors validateNote in backend/src/services/orderService.js, with the same messages.
+// Returns { error, note }: error is "" when fine, note is the cleaned text to send.
+export const validateNote = (raw) => {
+  if (raw === undefined) return { error: "", note: "" };
+  if (typeof raw !== "string") return { error: "Note must be text", note: "" };
+
+  const note = raw.trim().replace(/\r\n/g, "\n");
+  if (CONTROL_CHARACTER_EXCEPT_NEWLINE.test(note)) return { error: "Note contains invalid characters", note: "" };
+  if (note.length > NOTES_MAX_LENGTH) return { error: `Note must be at most ${NOTES_MAX_LENGTH} characters`, note: "" };
+  return { error: "", note };
+};

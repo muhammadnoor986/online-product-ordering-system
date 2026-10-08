@@ -12,6 +12,8 @@ import MyOrders from "./pages/MyOrders.jsx";
 import OrderDetails from "./pages/OrderDetails.jsx";
 import AdminProducts from "./pages/admin/AdminProducts.jsx";
 import AdminCategories from "./pages/admin/AdminCategories.jsx";
+import AdminOrders from "./pages/admin/AdminOrders.jsx";
+import AdminOrderDetails from "./pages/admin/AdminOrderDetails.jsx";
 
 function App() {
   return (
@@ -70,6 +72,22 @@ function App() {
           element={
             <ProtectedRoute adminOnly>
               <AdminCategories />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders/:id"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminOrderDetails />
             </ProtectedRoute>
           }
         />

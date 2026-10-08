@@ -128,6 +128,15 @@ pending -> confirmed -> processing -> shipped -> delivered
 - A `note` (up to 300 characters, no control characters) is kept in the status history together with the admin who made the change.
 - Prices, totals, items, customer, delivery details and the payment status can never be edited through these endpoints.
 
+### Admin orders screens (Phase 6)
+
+Log in as the admin and open **Admin Orders** in the menu (`/admin/orders`). Customers never see these links, and the API refuses them anyway.
+
+- **List**: status tabs with counts, search (order number, customer, e-mail, phone), payment filter (All / Pending / Paid), sort (newest or oldest) and pages of 10. Your choices are kept in the address, so the Back button and a reload return to the same view.
+- **Order page** (`/admin/orders/:id`): items, summary, customer, delivery details and the status history (who changed it, and the note).
+- **Update order**: the buttons come from the server (`allowedNextStatuses` and `canCancel`), so the status rules live only in the backend. Every change asks for a confirmation with an optional note (up to 300 characters). Cancelling warns that the stock goes back to the shop. If some stock could not be restored, a yellow notice lists the products to check by hand. That notice is shown once, right after cancelling.
+- If someone else changes the order first, you get a message and the page reloads the current order.
+
 ### Editing product stock (admin)
 
 Orders change stock all the time, so an admin form that was opened earlier may show an old number.
