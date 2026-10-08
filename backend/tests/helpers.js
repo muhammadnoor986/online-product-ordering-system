@@ -9,6 +9,9 @@ const crypto = require("node:crypto");
 
 require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
+// No request log lines in the test output (the app reads this when it is first loaded)
+process.env.LOG_REQUESTS = "false";
+
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 

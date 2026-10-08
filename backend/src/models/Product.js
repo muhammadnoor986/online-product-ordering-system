@@ -28,4 +28,9 @@ const productSchema = new mongoose.Schema(
   { timestamps: true } // adds createdAt and updatedAt
 );
 
+// The product list shows ACTIVE products, newest first (the same order as the sort in
+// productController.getProducts). This index lets MongoDB read them in that order directly
+// instead of sorting every product. (The category index above serves "products of a category".)
+productSchema.index({ isActive: 1, createdAt: -1, _id: -1 });
+
 module.exports = mongoose.model("Product", productSchema);

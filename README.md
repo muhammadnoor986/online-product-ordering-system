@@ -7,12 +7,15 @@ An e-commerce app built step by step.
 
 Current status: a working shop. Customers can browse products, keep a cart, check out (Cash on Delivery),
 follow and cancel their orders, and manage their profile and password. Admins manage products, categories
-and orders. Online payments are not built yet.
+and orders. Online payments are not built yet. The server checks its own configuration when it starts,
+sends basic security headers, logs requests safely and shuts down cleanly (see "Production notes").
 
 ## Prerequisites
 
-- Node.js 18 or newer
-- A free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster
+- **Node.js 20.19 or newer** (22.12 or newer also works). Older versions, including Node 18, do not work:
+  the backend uses Mongoose 9 and the frontend uses Vite 8. Check with `node --version`.
+- A MongoDB database: a free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster, or a MongoDB you run yourself
+  (for example `mongodb://127.0.0.1:27017/online_production`).
 
 ## 1. MongoDB Atlas setup
 
@@ -31,7 +34,22 @@ npm install
 copy .env.example .env      # Windows (macOS/Linux: cp .env.example .env)
 ```
 
-Open `backend/.env` and paste your real `MONGODB_URI`. This file is ignored by Git, so never commit it.
+Open `backend/.env` and fill in your real values. This file is ignored by Git, so never commit it.
+The two settings you **must** provide are:
+
+- `MONGODB_URI` – your MongoDB connection string (it must start with `mongodb://` or `mongodb+srv://`).
+- `JWT_SECRET` – a long random secret, **at least 32 characters**. The placeholder from `.env.example` is refused.
+  Generate one with: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+
+When the server starts it checks the whole configuration first. If something is wrong it prints **every** problem
+(never the secret values) and stops with exit code 1, for example:
+
+```
+The server cannot start because backend/.env has problems:
+  - JWT_SECRET is too short. Use at least 32 characters
+  - PORT must be a whole number between 1 and 65535
+Fix backend/.env (see backend/.env.example) and start the server again.
+```
 
 ```bash
 npm run dev
@@ -173,11 +191,13 @@ Leave `stock` out to edit other fields without touching it.
 
 ```bash
 cd backend
-npm test        # 319 backend tests
+npm test        # 380 backend tests (one is skipped on Windows)
 cd ../frontend
 npm test        # 37 frontend tests (pure functions)
 ```
 
+The backend tests include real-process checks of `server.js` (bad configuration exits with code 1; a good start logs safe request lines and shuts down
+cleanly); they use the separate test database only. The one test that sends a real SIGTERM is skipped on Windows, which cannot deliver that signal.
 The frontend tests check the browser's validators against the server's real validators, so the two cannot drift apart.
 There is no React/DOM testing library. The real-browser checks used during development are scripts kept outside this repository.
 
@@ -186,6 +206,36 @@ The tests use Node's built-in test runner and run against a **separate database*
 You can change the name with `TEST_DB_NAME` in `backend/.env`, but the tests refuse to run
 if the name does not contain "test" or equals your development database.
 Test data is removed when the run finishes.
+
+### Production notes (Phase 9)
+
+- **Startup check.** `MONGODB_URI` and `JWT_SECRET` are required; `JWT_EXPIRES_IN` (like `1d`, `12h`, `30m`; a bare number is refused),
+  `PORT`, `CLIENT_URL` (an address with no path and no trailing slash, because a trailing slash silently breaks CORS), `TRUST_PROXY`
+  and `LOG_REQUESTS` are checked when set. The check lives in `backend/src/config/env.js` and runs only when `server.js` starts.
+  If MongoDB itself cannot be reached the API still starts, so `/api/health` can report the problem; fix the connection and restart.
+- **Security headers.** Every API answer gets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: no-referrer`,
+  and `X-Powered-By` is removed. Answers under `/api/auth` also get `Cache-Control: no-store`. This is a small, hand-written set, not a full
+  hardening package: there is no HSTS or Content-Security-Policy, so serve the site over HTTPS through your host or reverse proxy.
+- **Behind a reverse proxy: `TRUST_PROXY`.** The login and password limiters use the visitor's IP address. Behind a proxy every request seems to
+  come from the proxy, so set `TRUST_PROXY` to the **number of proxies** in front of the server (usually `1`), or to a list of trusted proxy addresses.
+  The default is `false`: the `X-Forwarded-For` header is ignored, so nobody can fake an address. Do not set it when visitors reach the API directly.
+  The value `true` is refused on purpose, because it would trust whatever address a visitor claims.
+- **Request log.** One line per request on the console, for example `GET /api/products 200 18ms`: only the method, the path, the status and the time.
+  Never request bodies, headers, tokens, cookies, passwords or query strings. Switch it off with `LOG_REQUESTS=false`. There are no log files or rotation.
+- **Clean shutdown.** On Ctrl+C (SIGINT) or a stop request (SIGTERM) the server stops taking new requests, lets running ones finish,
+  closes the database connection and exits. If that takes longer than 10 seconds it exits anyway; a second Ctrl+C exits at once.
+- **Database indexes.** Products have an index for the product list (active products, newest first) next to the category index. Orders, users, carts and
+  categories already had theirs. Indexes are created by Mongoose when the server connects; this changes the database's structure, never its data.
+- **Search and scale.** Product search and the admin order search match text with a case-insensitive pattern over several fields. That is fine for
+  hundreds or a few thousand records, but such a search cannot use an index. With a much larger shop it would need a real search solution
+  (for example MongoDB text or Atlas Search indexes).
+
+**Known limitations**
+
+- The login limiter keeps its counts in the memory of one server process (see "Account security"); several server instances need a shared store.
+- There is no signup throttling and no e-mail verification or password reset.
+- The checks that exercise the shop in a real browser are not part of this repository yet, and there is no automatic test run (CI).
+- Online payments, e-mail and image uploads (products use image addresses) are not built.
 
 ## 3. Run the frontend
 
@@ -202,28 +252,39 @@ The frontend `.env` is optional; the default API address is `http://localhost:50
 
 ## Environment variables
 
-| File | Variable | Purpose |
+Backend (`backend/.env`, template: `backend/.env.example`):
+
+| Variable | Required | Purpose |
 |---|---|---|
-| backend/.env | `PORT` | API port (default 5000) |
-| backend/.env | `MONGODB_URI` | Atlas connection string |
-| backend/.env | `CLIENT_URL` | Allowed frontend origin for CORS |
-| backend/.env | `JWT_SECRET`, `JWT_EXPIRES_IN` | Signing key and lifetime of login tokens (see Authentication setup) |
-| backend/.env | `TEST_DB_NAME` | Optional name of the separate test database |
-| frontend/.env | `VITE_API_URL` | API base URL |
+| `MONGODB_URI` | yes | MongoDB connection string (`mongodb://` or `mongodb+srv://`) |
+| `JWT_SECRET` | yes | Signs login tokens. At least 32 characters, random, never shared. The example placeholder is refused |
+| `JWT_EXPIRES_IN` | no (`1d`) | How long a login lasts: a number with a unit, like `30m`, `12h`, `1d` |
+| `PORT` | no (`5000`) | API port, 1 to 65535 |
+| `CLIENT_URL` | no (`http://localhost:5173`) | The one frontend address allowed by CORS. No path, no trailing slash |
+| `TRUST_PROXY` | no (`false`) | Number of reverse proxies in front of the API (for example `1`), or a list of trusted proxy addresses. See "Production notes" |
+| `LOG_REQUESTS` | no (`true`) | `false` switches the request log off |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME` | only for `npm run seed:admin` | The first admin account |
+| `TEST_DB_NAME` | no (`online_production_test`) | Name of the separate test database (must contain "test") |
+
+Frontend (`frontend/.env`, optional):
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_URL` | API base URL (default `http://localhost:5000/api`) |
 
 ## Folder structure
 
 ```
 backend/src/
-  config/        database connection
+  config/        database connection, startup configuration check (env.js)
   constants/     order statuses (the one status table) and payment constants
   controllers/   route logic (auth, products, categories, cart, orders, admin orders)
-  middleware/    login check, roles, error handling, failed-attempt limiter
+  middleware/    login check, roles, error handling, failed-attempt limiter, security headers, request log
   models/        User, Category, Product, Cart, Order
   routes/        URL definitions
   services/      cart, order/checkout and stock logic
   scripts/       seedAdmin.js
-  utils/         small helpers (query parsing, password rules, tokens, ...)
+  utils/         small helpers (query parsing, password rules, tokens, graceful shutdown, ...)
   app.js         Express setup
   server.js      starts the server
 backend/tests/   automated tests (separate test database)
