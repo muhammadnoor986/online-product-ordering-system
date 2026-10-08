@@ -7,6 +7,9 @@ import HealthPage from "./pages/HealthPage.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Cart from "./pages/Cart.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import MyOrders from "./pages/MyOrders.jsx";
+import OrderDetails from "./pages/OrderDetails.jsx";
 import AdminProducts from "./pages/admin/AdminProducts.jsx";
 import AdminCategories from "./pages/admin/AdminCategories.jsx";
 
@@ -26,6 +29,30 @@ function App() {
           element={
             <ProtectedRoute customerOnly>
               <Cart />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute customerOnly>
+              <Checkout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute customerOnly>
+              <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute customerOnly>
+              <OrderDetails />
             </ProtectedRoute>
           }
         />

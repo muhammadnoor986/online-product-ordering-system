@@ -16,12 +16,15 @@ function Navbar() {
       <nav className="navbar-links">
         <Link to="/">Products</Link>
         {isCustomer && (
-          <Link
-            to="/cart"
-            aria-label={cart.itemCount > 0 ? `Cart, ${cart.itemCount} ${cart.itemCount === 1 ? "item" : "items"}` : "Cart"}
-          >
-            Cart{cart.itemCount > 0 ? ` (${cart.itemCount})` : ""}
-          </Link>
+          <>
+            <Link
+              to="/cart"
+              aria-label={cart.itemCount > 0 ? `Cart, ${cart.itemCount} ${cart.itemCount === 1 ? "item" : "items"}` : "Cart"}
+            >
+              Cart{cart.itemCount > 0 ? ` (${cart.itemCount})` : ""}
+            </Link>
+            <Link to="/orders">My Orders</Link>
+          </>
         )}
         {isAuthenticated && user.role === "admin" && (
           <>

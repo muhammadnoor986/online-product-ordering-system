@@ -7,6 +7,10 @@ const CartContext = createContext(null);
 
 const EMPTY_CART = { items: [], itemCount: 0, subtotal: 0, hasProblems: false };
 
+// Placing an order may take a little longer than a normal request, and it must not be
+// cut off early: a cut-off request could still have succeeded on the server.
+const CHECKOUT_TIMEOUT_MS = 30000;
+
 // Turns an Axios error into a message that is safe to show. Server messages for
 // "not enough stock" and similar are already written for people, so we show them;
 // our own server errors (5xx) get a generic message.
@@ -89,8 +93,9 @@ export function CartProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
-  // Runs one change to the cart. Always answers { ok, message, status } and never throws,
-  // so the page decides how to show the result.
+  // Runs one change to the cart. Always answers and never throws, so the page decides how to show it:
+  //   success: { ok: true, message, data }                 data = the whole answer from the server
+  //   failure: { ok: false, status, message, details }     status is undefined when the server never answered
   const runChange = async (sendRequest, fallbackMessage) => {
     const ownerId = customerIdRef.current;
     if (!ownerId) {
@@ -101,7 +106,7 @@ export function CartProvider({ children }) {
     try {
       const response = await sendRequest();
       storeCart(ownerId, response.data.cart); // the server sends back the whole updated cart
-      return { ok: true, message: response.data.message };
+      return { ok: true, message: response.data.message, data: response.data };
     } catch (changeError) {
       const status = changeError.response ? changeError.response.status : undefined;
 
@@ -110,7 +115,7 @@ export function CartProvider({ children }) {
         return { ok: false, status, message: "Your session has expired. Please log in again." };
       }
       if (status === 403) {
-        return { ok: false, status, message: "Only customer accounts can use the cart." };
+        return { ok: false, status, message: "Only customer accounts can shop." };
       }
 
       const message = toFriendlyMessage(changeError, fallbackMessage);
@@ -119,7 +124,8 @@ export function CartProvider({ children }) {
       if (changeError.response) {
         await fetchCart(ownerId, { silent: true });
       }
-      return { ok: false, status, message };
+      const details = changeError.response ? changeError.response.data?.details : undefined;
+      return { ok: false, status, message, details };
     } finally {
       setUpdating(false);
     }
@@ -136,6 +142,12 @@ export function CartProvider({ children }) {
 
   const clearCart = () => runChange(() => axiosClient.delete("/cart"), "Could not clear your cart.");
 
+  // Turns the cart into an order (POST /api/orders). The server sends back the new order and the
+  // now EMPTY cart; runChange stores that cart, so the navbar count updates at once.
+  // payload = { delivery, paymentMethod, expectedTotal }. Prices and totals are never sent as facts.
+  const placeOrder = (payload) =>
+    runChange(() => axiosClient.post("/orders", payload, { timeout: CHECKOUT_TIMEOUT_MS }), "Could not place your order.");
+
   const refreshCart = () => (customerIdRef.current ? fetchCart(customerIdRef.current) : Promise.resolve({ ok: false }));
 
   const value = {
@@ -147,6 +159,7 @@ export function CartProvider({ children }) {
     updateCartItem,
     removeCartItem,
     clearCart,
+    placeOrder,
     refreshCart,
   };
 

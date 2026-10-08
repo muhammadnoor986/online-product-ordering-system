@@ -191,12 +191,20 @@ function Cart() {
             </p>
           )}
 
-          <button type="button" className="button" disabled aria-describedby="checkout-note">
-            Proceed to Checkout
-          </button>
-          <p id="checkout-note" className="cart-summary-note">
-            Checkout is coming next.
-          </p>
+          {cart.hasProblems ? (
+            <>
+              <button type="button" className="button" disabled aria-describedby="checkout-note">
+                Proceed to Checkout
+              </button>
+              <p id="checkout-note" className="cart-summary-note">
+                Please fix the items that need attention first.
+              </p>
+            </>
+          ) : (
+            <Link to="/checkout" className="button button-link">
+              Proceed to Checkout
+            </Link>
+          )}
 
           <Link to="/" className="button button-link button-secondary">
             Continue Shopping

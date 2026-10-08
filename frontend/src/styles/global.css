@@ -646,6 +646,328 @@ select:focus-visible {
   text-align: center;
 }
 
+/* ---------- Checkout and order pages (they reuse the cart layout and the form styles) ---------- */
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.checkout-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.checkout-section h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* notices at the top of a page keep some space below them */
+main > .status {
+  margin-bottom: 1rem;
+}
+
+.required-mark {
+  color: #b91c1c;
+}
+
+.optional-mark {
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.form-field input[aria-invalid="true"],
+.form-field textarea[aria-invalid="true"] {
+  border-color: #d64545;
+  background: #fff7f7;
+}
+
+.notes-counter {
+  text-align: right;
+}
+
+.status-info {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.checkout-problems {
+  margin: 0.25rem 0 0.25rem 1.1rem;
+  padding: 0;
+}
+
+.payment-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #eff6ff;
+  border: 2px solid #2563eb;
+  border-radius: 8px;
+}
+
+.payment-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+}
+
+.payment-option-title {
+  display: block;
+  font-weight: 600;
+}
+
+.payment-option-text {
+  display: block;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.summary-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.summary-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.summary-item-unavailable {
+  color: #92400e;
+  font-style: normal;
+}
+
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.6rem;
+  font-size: 1.2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* order page */
+.order-banner {
+  margin-bottom: 1rem;
+}
+
+.order-subtitle {
+  margin: 0 0 1rem;
+  color: #4b5563;
+}
+
+.order-items {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.order-item {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-item .order-item-image {
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1;
+  border-radius: 6px;
+}
+
+.order-item .order-item-image.product-image-placeholder {
+  font-size: 0.6rem;
+  text-align: center;
+}
+
+.order-item-info {
+  min-width: 0;
+}
+
+.order-item-name {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.order-item-detail {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.order-item-total {
+  margin: 0;
+  font-weight: 700;
+}
+
+.order-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.order-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 1rem;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.order-meta dt {
+  color: #6b7280;
+}
+
+.order-meta dd {
+  margin: 0;
+  text-align: right;
+}
+
+.order-address,
+.order-notes {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.order-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+}
+
+.order-footer .button {
+  margin-top: 0;
+}
+
+/* ---------- My orders ---------- */
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  margin: 0 0 1rem;
+  list-style: none;
+}
+
+.order-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem 1rem;
+  padding: 1rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.order-card-main {
+  min-width: 0; /* lets long text wrap instead of stretching the page */
+}
+
+.order-card-number {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.order-card-date {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.order-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin: 0 0 0.5rem;
+}
+
+.order-card-payment {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.order-card-items {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+  overflow-wrap: anywhere;
+}
+
+.order-card-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.order-card-count {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.order-card-total {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.order-card-side .button {
+  min-height: 2.25rem;
+  margin-top: 0;
+}
+
+/* wider screens: details on the left, total and button on the right */
+@media (min-width: 700px) {
+  .order-card {
+    grid-template-columns: 1fr auto;
+  }
+
+  .order-card-side {
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 11rem;
+    padding: 0 0 0 1rem;
+    border-top: none;
+    border-left: 1px solid #e5e7eb;
+  }
+}
+
 /* ---------- Admin pages ---------- */
 .navbar-links {
   flex-wrap: wrap;
