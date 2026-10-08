@@ -2,6 +2,8 @@ const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 const AppError = require("../utils/AppError");
+const { validatePasswordChange } = require("../utils/passwordRules");
+const { loginLimiter, changePasswordLimiter, attemptKey, assertNotBlocked } = require("../middleware/rateLimiter");
 
 const SALT_ROUNDS = 10;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -76,13 +78,20 @@ const login = async (req, res, next) => {
     }
 
     const { email, password } = req.body;
+
+    // Too many wrong passwords for this IP + e-mail: refuse before doing any work
+    const attemptId = attemptKey(req, email);
+    assertNotBlocked(loginLimiter, attemptId, res);
+
     const user = await User.findOne({ email: email.trim().toLowerCase() });
 
     // Same message for "no such email" and "wrong password"
     const passwordMatches = user && (await bcrypt.compare(password, user.password));
     if (!passwordMatches) {
+      loginLimiter.fail(attemptId);
       throw new AppError("Invalid email or password", 401);
     }
+    loginLimiter.reset(attemptId);
 
     res.status(200).json({
       success: true,
@@ -145,4 +154,62 @@ const updateMe = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, getMe, updateMe, validateProfileUpdate };
+// POST /api/auth/change-password (protected)  body: { currentPassword, newPassword }
+// Changes the password of the logged-in user, and nothing else. The user is always req.user.
+// Every older login token stops working (tokenVersion goes up); this session gets a fresh one.
+const changePassword = async (req, res, next) => {
+  try {
+    // Wrong "current password" guesses are counted, like wrong passwords at login
+    const attemptId = attemptKey(req, req.user.email);
+    assertNotBlocked(changePasswordLimiter, attemptId, res);
+
+    const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : null;
+    if (!body) {
+      throw new AppError("Current password is required", 400);
+    }
+    const otherFields = Object.keys(body).filter((key) => key !== "currentPassword" && key !== "newPassword");
+    if (otherFields.length > 0) {
+      throw new AppError("Only the current and the new password are accepted here", 400);
+    }
+    const problem = validatePasswordChange(body);
+    if (problem) {
+      throw new AppError(problem, 400);
+    }
+
+    const { currentPassword, newPassword } = body;
+    const currentHash = req.user.password;
+
+    if (!(await bcrypt.compare(currentPassword, currentHash))) {
+      changePasswordLimiter.fail(attemptId);
+      // 400, not 401: a 401 would make the app think the login itself is no longer valid
+      throw new AppError("Current password is incorrect", 400);
+    }
+
+    const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // One conditional update: it only works if the password is still the one we just checked,
+    // so two simultaneous changes cannot both succeed. $inc also works for accounts that
+    // have no tokenVersion yet (they become 1).
+    const user = await User.findOneAndUpdate(
+      { _id: req.user._id, password: currentHash },
+      { $set: { password: newHash }, $inc: { tokenVersion: 1 } },
+      { returnDocument: "after" }
+    );
+    if (!user) {
+      throw new AppError("Your password was just changed by another request. Please log in again.", 409);
+    }
+
+    changePasswordLimiter.reset(attemptId);
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed. Other devices have been signed out.",
+      token: generateToken(user),
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, login, getMe, updateMe, validateProfileUpdate, changePassword };

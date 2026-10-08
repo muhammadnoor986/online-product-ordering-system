@@ -26,6 +26,13 @@ const protect = async (req, res, next) => {
       throw new AppError("User no longer exists.", 401);
     }
 
+    // A password change raises the user's tokenVersion, which retires every older token.
+    // Tokens made before this check existed have no "tv" and count as version 0.
+    const tokenVersion = decoded.tv === undefined ? 0 : decoded.tv;
+    if (tokenVersion !== (user.tokenVersion || 0)) {
+      throw new AppError("Invalid or expired token. Please log in again.", 401);
+    }
+
     req.user = user;
     next();
   } catch (error) {

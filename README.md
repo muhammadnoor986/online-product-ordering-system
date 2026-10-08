@@ -5,7 +5,9 @@ An e-commerce app built step by step.
 - **frontend/** – React + Vite + React Router + Axios
 - **backend/** – Node.js + Express + Mongoose (MongoDB Atlas)
 
-Current status: **Phase 1** (project skeleton and health check only).
+Current status: a working shop. Customers can browse products, keep a cart, check out (Cash on Delivery),
+follow and cancel their orders, and manage their profile and password. Admins manage products, categories
+and orders. Online payments are not built yet.
 
 ## Prerequisites
 
@@ -53,8 +55,31 @@ Then create the admin (safe to run again; it never creates a duplicate):
 npm run seed:admin
 ```
 
-Auth endpoints: `POST /api/auth/signup`, `POST /api/auth/login`, `GET /api/auth/me` (needs `Authorization: Bearer <token>`).
-New signups are always `customer`; only the seed script creates an `admin`.
+Auth endpoints (the protected ones need `Authorization: Bearer <token>`):
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/auth/signup` | create a customer account (new signups are always `customer`; only the seed script creates an `admin`) |
+| `POST /api/auth/login` | log in, returns a token |
+| `GET /api/auth/me` | the logged-in user |
+| `PATCH /api/auth/me` | change **your own name**: body `{ "name": "..." }`. Any other field is refused (400). |
+| `POST /api/auth/change-password` | body `{ "currentPassword": "...", "newPassword": "..." }` (see below) |
+
+### Account security (Phase 7C and 8)
+
+- **Profile**: the name in the menu opens `/profile` (customers and admins). Only the name can be edited. Email and role cannot be changed.
+  Old orders keep the name they were placed with.
+- **Changing the password** needs the current password. The new one must be at least 8 characters (at most 72 bytes) and different from the current one.
+  Passwords that already exist, even if shorter, keep working for login. The 8-character rule is only for new passwords.
+- **Other devices are signed out.** Every login token carries a "token version" (`tv`). A password change raises the user's `tokenVersion`,
+  so every older token stops working (401). The browser that changed the password receives a fresh token and stays logged in.
+  Tokens made before this feature have no `tv` and count as version 0, so nobody is logged out by the upgrade.
+- **Too many wrong passwords are slowed down.** After **10 failed attempts within 15 minutes** for the same IP + e-mail,
+  `POST /api/auth/login` and `POST /api/auth/change-password` answer `429` (with a `Retry-After` header), even if the right password is then used.
+  A successful login or password change resets the counter.
+  **Limitation:** the counters live in the memory of one server process. They are lost on restart and are not shared between several server
+  instances, so this is **not enough for a production deployment with more than one instance** (a shared store such as Redis would be needed).
+  One IP trying many different e-mails is also not slowed down by this limiter.
 
 ### Cart API (Phase 4A)
 
@@ -144,12 +169,17 @@ To change `stock` with `PUT /api/products/:id`, also send `previousStock` (the s
 `{ "stock": 20, "previousStock": 7 }`. If the real stock is no longer 7 the API answers `409` and changes nothing.
 Leave `stock` out to edit other fields without touching it.
 
-### Running the backend tests
+### Running the tests
 
 ```bash
 cd backend
-npm test
+npm test        # 319 backend tests
+cd ../frontend
+npm test        # 37 frontend tests (pure functions)
 ```
+
+The frontend tests check the browser's validators against the server's real validators, so the two cannot drift apart.
+There is no React/DOM testing library. The real-browser checks used during development are scripts kept outside this repository.
 
 The tests use Node's built-in test runner and run against a **separate database**
 (`online_production_test` on the same MongoDB server), never your normal data.
@@ -177,6 +207,8 @@ The frontend `.env` is optional; the default API address is `http://localhost:50
 | backend/.env | `PORT` | API port (default 5000) |
 | backend/.env | `MONGODB_URI` | Atlas connection string |
 | backend/.env | `CLIENT_URL` | Allowed frontend origin for CORS |
+| backend/.env | `JWT_SECRET`, `JWT_EXPIRES_IN` | Signing key and lifetime of login tokens (see Authentication setup) |
+| backend/.env | `TEST_DB_NAME` | Optional name of the separate test database |
 | frontend/.env | `VITE_API_URL` | API base URL |
 
 ## Folder structure
@@ -184,13 +216,23 @@ The frontend `.env` is optional; the default API address is `http://localhost:50
 ```
 backend/src/
   config/        database connection
-  controllers/   route logic
-  middleware/    error handling (auth comes in Phase 2)
+  constants/     order statuses (the one status table) and payment constants
+  controllers/   route logic (auth, products, categories, cart, orders, admin orders)
+  middleware/    login check, roles, error handling, failed-attempt limiter
+  models/        User, Category, Product, Cart, Order
   routes/        URL definitions
+  services/      cart, order/checkout and stock logic
+  scripts/       seedAdmin.js
+  utils/         small helpers (query parsing, password rules, tokens, ...)
   app.js         Express setup
   server.js      starts the server
+backend/tests/   automated tests (separate test database)
 frontend/src/
   api/           shared Axios client
-  pages/         one file per page
+  components/    reusable parts (navbar, order timeline, action panels, forms, ...)
+  context/       Auth and Cart state
+  pages/         one file per page (pages/admin/ for the admin screens)
+  utils/         display helpers and validators that mirror the server
   styles/        CSS
+frontend/tests/  pure-function tests
 ```

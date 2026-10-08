@@ -13,6 +13,9 @@ const userSchema = new mongoose.Schema(
     // Always stores a bcrypt hash, never the plain password
     password: { type: String, required: true },
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
+    // Goes up by one whenever the password changes. Login tokens carry the number they were made
+    // with, so every older token stops working. Accounts that have no number yet count as 0.
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true } // adds createdAt and updatedAt
 );
@@ -21,6 +24,7 @@ const userSchema = new mongoose.Schema(
 userSchema.set("toJSON", {
   transform: (doc, ret) => {
     delete ret.password;
+    delete ret.tokenVersion;
     delete ret.__v;
     return ret;
   },

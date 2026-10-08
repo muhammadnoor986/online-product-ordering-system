@@ -1611,3 +1611,8 @@ main > .status {
   text-decoration: underline;
   overflow-wrap: anywhere;
 }
+
+/* ---------- Change password (Phase 8) ---------- */
+.profile-card .form-field + .field-hint {
+  margin-top: -0.4rem;
+}

@@ -77,6 +77,15 @@ export function AuthProvider({ children }) {
     return response.data.user;
   };
 
+  // Changes the password. The server answers with a FRESH login token (all older tokens, on other
+  // devices, stop working). It replaces the saved one, so this browser stays logged in.
+  // Errors are thrown to the caller, which handles them (401 -> logout()).
+  const changePassword = async (currentPassword, newPassword) => {
+    const response = await axiosClient.post("/auth/change-password", { currentPassword, newPassword });
+    saveAuth(response.data.token, response.data.user);
+    return response.data.user;
+  };
+
   const value = {
     user,
     token,
@@ -86,6 +95,7 @@ export function AuthProvider({ children }) {
     signup,
     logout,
     updateUser,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

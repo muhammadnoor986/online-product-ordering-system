@@ -20,9 +20,14 @@ function Login() {
       await login(email, password);
       navigate("/");
     } catch (error) {
-      setErrorMessage(
-        error.response?.data?.message || "Cannot reach the server. Please try again."
-      );
+      if (error.response?.status === 429) {
+        // Too many wrong passwords for this e-mail: the server says how long to wait
+        setErrorMessage(error.response.data?.message || "Too many failed attempts. Please wait a while and try again.");
+      } else {
+        setErrorMessage(
+          error.response?.data?.message || "Cannot reach the server. Please try again."
+        );
+      }
     } finally {
       setSubmitting(false);
     }

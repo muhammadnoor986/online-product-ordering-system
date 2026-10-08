@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import ChangePasswordForm from "../components/ChangePasswordForm.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import getErrorMessage from "../utils/getErrorMessage.js";
 import { capitalize } from "../utils/orderDisplay.js";
@@ -134,6 +135,8 @@ function Profile() {
           </button>
         </div>
       </form>
+
+      <ChangePasswordForm />
 
       <div className="order-footer">
         {user.role === "admin" ? (
