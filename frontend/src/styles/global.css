@@ -1574,3 +1574,40 @@ main > .status {
     top: 0;
   }
 }
+
+/* ---------- Profile page (Phase 7C) ---------- */
+.profile-card {
+  margin-bottom: 1rem;
+}
+
+.profile-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+}
+
+.profile-info dt {
+  color: #6b7280;
+}
+
+.profile-info dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.profile-card .status {
+  margin: 0;
+}
+
+.profile-card .form-actions .button {
+  min-width: 7rem;
+}
+
+/* The name in the navbar is now a link to the profile; a long name must not break the layout */
+.navbar-links a.navbar-user {
+  color: #1f2937;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}

@@ -99,3 +99,19 @@ export const validateNote = (raw) => {
   if (note.length > NOTES_MAX_LENGTH) return { error: `Note must be at most ${NOTES_MAX_LENGTH} characters`, note: "" };
   return { error: "", note };
 };
+
+// A person's name on the profile page (only the name can be edited there).
+// Mirrors updateMe in backend/src/controllers/authController.js, with the same messages and the
+// same character rule as the delivery fields. The server stays the authority.
+// Returns { error, name }: error is "" when fine, name is the cleaned text to send.
+export const NAME_MAX_LENGTH = 100;
+
+export const validateName = (raw) => {
+  if (typeof raw !== "string") return { error: "Name is required", name: "" };
+
+  const name = raw.trim();
+  if (!name) return { error: "Name is required", name: "" };
+  if (ANY_CONTROL_CHARACTER.test(name)) return { error: "Name contains invalid characters", name: "" };
+  if (name.length > NAME_MAX_LENGTH) return { error: `Name must be at most ${NAME_MAX_LENGTH} characters`, name: "" };
+  return { error: "", name };
+};

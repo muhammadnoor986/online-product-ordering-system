@@ -10,6 +10,7 @@ import Cart from "./pages/Cart.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import MyOrders from "./pages/MyOrders.jsx";
 import OrderDetails from "./pages/OrderDetails.jsx";
+import Profile from "./pages/Profile.jsx";
 import AdminProducts from "./pages/admin/AdminProducts.jsx";
 import AdminCategories from "./pages/admin/AdminCategories.jsx";
 import AdminOrders from "./pages/admin/AdminOrders.jsx";
@@ -55,6 +56,16 @@ function App() {
           element={
             <ProtectedRoute customerOnly>
               <OrderDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Every logged-in user (customer or admin) has a profile */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />

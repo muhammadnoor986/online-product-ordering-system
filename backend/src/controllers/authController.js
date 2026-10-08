@@ -100,4 +100,49 @@ const getMe = (req, res) => {
   res.status(200).json({ success: true, user: req.user });
 };
 
-module.exports = { signup, login, getMe };
+const NAME_MAX_LENGTH = 100;
+// Control characters, Unicode line separators and text-direction overrides (the same set the
+// checkout delivery fields refuse)
+const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/;
+
+// Returns the cleaned name, or throws 400. Only "name" may be in the body.
+const validateProfileUpdate = (body) => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new AppError("Name is required", 400);
+  }
+  const otherFields = Object.keys(body).filter((key) => key !== "name");
+  if (otherFields.length > 0) {
+    throw new AppError("Only the name can be changed here", 400);
+  }
+  if (typeof body.name !== "string") {
+    throw new AppError("Name is required", 400);
+  }
+
+  const name = body.name.trim();
+  if (!name) throw new AppError("Name is required", 400);
+  if (CONTROL_CHARACTER.test(name)) throw new AppError("Name contains invalid characters", 400);
+  if (name.length > NAME_MAX_LENGTH) {
+    throw new AppError(`Name must be at most ${NAME_MAX_LENGTH} characters`, 400);
+  }
+  return name;
+};
+
+// PATCH /api/auth/me (protected)  body: { name }
+// Changes the name of the logged-in user, and nothing else. The user is always req.user
+// (from the token), never an id from the request. Old orders keep the name they were placed with.
+const updateMe = async (req, res, next) => {
+  try {
+    const name = validateProfileUpdate(req.body);
+
+    const user = await User.findByIdAndUpdate(req.user._id, { $set: { name } }, { returnDocument: "after", runValidators: true });
+    if (!user) {
+      throw new AppError("User no longer exists.", 401);
+    }
+
+    res.status(200).json({ success: true, message: "Profile updated", user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { signup, login, getMe, updateMe, validateProfileUpdate };

@@ -35,9 +35,9 @@ function Navbar() {
         )}
         {isAuthenticated ? (
           <>
-            <span className="navbar-user">
+            <Link to="/profile" className="navbar-user" title="Your profile">
               {user.name} ({user.role})
-            </span>
+            </Link>
             <button type="button" className="button button-small" onClick={logout}>
               Logout
             </button>

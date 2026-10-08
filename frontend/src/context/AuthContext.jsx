@@ -67,6 +67,16 @@ export function AuthProvider({ children }) {
     return response.data.user;
   };
 
+  // Changes the logged-in user's own name. The server answers with the saved user, which is
+  // stored the same way as after login, so the navbar shows the new name straight away.
+  // Errors are thrown to the caller (a 401 is handled there with logout(), like on the other pages).
+  const updateUser = async (name) => {
+    const response = await axiosClient.patch("/auth/me", { name });
+    localStorage.setItem("user", JSON.stringify(response.data.user));
+    setUser(response.data.user);
+    return response.data.user;
+  };
+
   const value = {
     user,
     token,
@@ -75,6 +85,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
