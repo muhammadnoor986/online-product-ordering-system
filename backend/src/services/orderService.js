@@ -16,7 +16,12 @@ const orderNumbers = require("../utils/generateOrderNumber");
 const cartService = require("./cartService");
 const stockService = require("./stockService");
 const { PAYMENT_METHODS } = require("../constants/paymentMethods");
-const { canTransition, CUSTOMER_CANCELLABLE_STATUSES } = require("../constants/orderStatus");
+const {
+  ORDER_STATUSES,
+  canTransition,
+  allowedNextStatuses,
+  CUSTOMER_CANCELLABLE_STATUSES,
+} = require("../constants/orderStatus");
 
 const SHIPPING_FEE = 0; // Rs. 0 for now (the Order model already has the field for later)
 const MAX_ORDER_NUMBER_ATTEMPTS = 5;
@@ -297,7 +302,7 @@ const placeOrder = async (user, body) => {
 // updated order back gives the stock back, so two simultaneous cancels cannot restore it twice.
 // (If the server crashed right after that update, the stock would stay taken. We accept that:
 // it leaves the shop slightly under-stocked, never over-stocked.)
-const cancelOrder = async ({
+const cancelOrderWithReport = async ({
   orderId,
   actorId,
   ownerId,
@@ -335,8 +340,116 @@ const cancelOrder = async ({
     );
   }
 
-  await stockService.releaseStock(order.items.map((item) => ({ product: item.product, quantity: item.quantity })));
+  // releaseStock never throws. It tells us which products it could not give stock back to.
+  const { failed } = await stockService.releaseStock(
+    order.items.map((item) => ({ product: item.product, quantity: item.quantity }))
+  );
+
+  return {
+    order,
+    stockRestoreFailed: failed.map((item) => ({ productId: String(item.product), quantity: item.quantity })),
+  };
+};
+
+// The same cancel, answering with just the order (this is what the customer's cancel uses)
+const cancelOrder = async (options) => (await cancelOrderWithReport(options)).order;
+
+// ---------------------------------------------------------------------------
+// Admin: moving an order forward
+// ---------------------------------------------------------------------------
+
+const NOTE_MAX_LENGTH = 300;
+
+// Checks an admin's note (it is kept in the order's status history).
+// Returns the cleaned text, or "" when there is no note.
+const validateNote = (note) => {
+  if (note === undefined) return "";
+  if (typeof note !== "string") {
+    throw new AppError("Note must be text", 400);
+  }
+  const value = note.trim().replace(/\r\n/g, "\n");
+  if (CONTROL_CHARACTER_EXCEPT_NEWLINE.test(value)) {
+    throw new AppError("Note contains invalid characters", 400);
+  }
+  if (value.length > NOTE_MAX_LENGTH) {
+    throw new AppError(`Note must be at most ${NOTE_MAX_LENGTH} characters`, 400);
+  }
+  return value;
+};
+
+// Moves an order ONE step forward (pending -> confirmed -> processing -> shipped -> delivered).
+// Cancelling is NOT done here: cancelOrder does it, because it must also give the stock back.
+//
+// The rules come from the one status table (constants/orderStatus.js). The update itself is a
+// single atomic step that says "change it, but only if it is STILL in the status I just read",
+// so two admins clicking at the same moment (or an admin and a customer's cancel) can never both win.
+//
+// Cash on Delivery: the order becomes "paid" in the SAME atomic update that makes it "delivered".
+const changeOrderStatus = async ({ orderId, toStatus, actorId, note = "" }) => {
+  if (!ORDER_STATUSES.includes(toStatus)) {
+    throw new AppError(`status must be one of: ${ORDER_STATUSES.join(", ")}`, 400);
+  }
+  if (toStatus === "cancelled") {
+    throw new AppError("Use the cancel endpoint to cancel an order", 400);
+  }
+
+  const existing = await Order.findById(orderId).select("status paymentMethod paymentStatus");
+  if (!existing) {
+    throw new AppError("Order not found", 404);
+  }
+
+  if (!canTransition(existing.status, toStatus)) {
+    const forward = allowedNextStatuses(existing.status).filter((status) => status !== "cancelled");
+    let message;
+    if (existing.status === toStatus) {
+      message = `This order is already ${toStatus}`;
+    } else if (forward.length === 0) {
+      message = `This order is ${existing.status} and can no longer be changed`;
+    } else {
+      message = `An order that is ${existing.status} can only move to: ${forward.join(", ")}`;
+    }
+    throw new AppError(message, 409, [
+      {
+        reason: "invalid_transition",
+        currentStatus: existing.status,
+        allowedNextStatuses: [...allowedNextStatuses(existing.status)],
+      },
+    ]);
+  }
+
+  const changes = { status: toStatus };
+  if (toStatus === "delivered" && existing.paymentMethod === "cod" && existing.paymentStatus === "pending") {
+    changes.paymentStatus = "paid"; // the cash is collected when the order is handed over
+  }
+
+  const order = await Order.findOneAndUpdate(
+    // still in the status we read, and the payment status we read: nobody changed it meanwhile
+    { _id: orderId, status: existing.status, paymentStatus: existing.paymentStatus },
+    {
+      $set: changes,
+      $push: { statusHistory: { status: toStatus, changedAt: new Date(), changedBy: actorId, note } },
+    },
+    { returnDocument: "after" }
+  );
+
+  if (!order) {
+    // Somebody else changed this order between our read and our update
+    const now = await Order.findById(orderId).select("status");
+    if (!now) throw new AppError("Order not found", 404);
+    throw new AppError(
+      `This order was just changed by someone else (it is now ${now.status}). Please reload and try again.`,
+      409
+    );
+  }
+
   return order;
 };
 
-module.exports = { placeOrder, cancelOrder, validateCheckoutInput };
+module.exports = {
+  placeOrder,
+  cancelOrder,
+  cancelOrderWithReport,
+  changeOrderStatus,
+  validateCheckoutInput,
+  validateNote,
+};

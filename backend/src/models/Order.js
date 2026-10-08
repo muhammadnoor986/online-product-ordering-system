@@ -123,5 +123,9 @@ const orderSchema = new mongoose.Schema(
 // "My orders", newest first. (Also serves lookups by user.)
 orderSchema.index({ user: 1, createdAt: -1 });
 
+// The admin order list: newest first, and filtered by status (statuses first, then date)
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Order", orderSchema);
 module.exports.MAX_ITEMS = MAX_ITEMS;
