@@ -4,12 +4,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import {
+  buildTimeline,
   describeChangedBy,
   getPaymentBadgeClass,
   getStatusActionLabel,
   getStatusBadgeClass,
   ORDER_STATUS_TABS,
   PAYMENT_FILTER_OPTIONS,
+  TIMELINE_STAGES,
 } from "../src/utils/orderDisplay.js";
 import { validateNote } from "../src/utils/validateDelivery.js";
 
@@ -82,5 +84,97 @@ describe("validateNote agrees with the server", () => {
     assert.deepEqual(validateNote("  one\r\ntwo  "), { error: "", note: "one\ntwo" });
     assert.match(validateNote(`a${char(0x202e)}b`).error, /invalid characters/);
     assert.match(validateNote("x".repeat(301)).error, /at most 300/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Customer order timeline
+// ---------------------------------------------------------------------------
+const { ORDER_TRANSITIONS } = require("../../backend/src/constants/orderStatus.js");
+
+const at = (hour) => new Date(Date.UTC(2026, 9, 8, hour)).toISOString();
+const historyOf = (...statuses) => statuses.map((status, index) => ({ status, changedAt: at(index + 1), note: `secret note ${status}` }));
+const orderWith = (status, statuses) => ({ status, statusHistory: historyOf(...statuses) });
+const summary = (steps) => steps.map((step) => `${step.status}:${step.state}`).join(" ");
+
+describe("buildTimeline", () => {
+  it("the stage list matches the server's status table (same statuses, same order)", () => {
+    assert.deepEqual([...TIMELINE_STAGES, "cancelled"].sort(), [...ORDER_STATUSES].sort());
+    for (let i = 0; i < TIMELINE_STAGES.length - 1; i++) {
+      assert.ok(ORDER_TRANSITIONS[TIMELINE_STAGES[i]].includes(TIMELINE_STAGES[i + 1]), `${TIMELINE_STAGES[i]} -> ${TIMELINE_STAGES[i + 1]}`);
+    }
+    assert.deepEqual(ORDER_TRANSITIONS[TIMELINE_STAGES[TIMELINE_STAGES.length - 1]], []);
+  });
+
+  it("every normal status: earlier ones done, this one current, later ones upcoming", () => {
+    const path = ["pending", "confirmed", "processing", "shipped", "delivered"];
+    path.forEach((status, index) => {
+      const steps = buildTimeline(orderWith(status, path.slice(0, index + 1)));
+      assert.equal(steps.length, 5);
+      steps.forEach((step, i) => {
+        assert.equal(step.state, i < index ? "done" : i === index ? "current" : "upcoming", `${status}: step ${step.status}`);
+      });
+    });
+    assert.equal(summary(buildTimeline(orderWith("pending", ["pending"]))), "pending:current confirmed:upcoming processing:upcoming shipped:upcoming delivered:upcoming");
+  });
+
+  it("uses the dates from the history and never invents one", () => {
+    const steps = buildTimeline(orderWith("processing", ["pending", "confirmed", "processing"]));
+    assert.deepEqual(steps.map((s) => s.changedAt), [at(1), at(2), at(3), null, null]);
+  });
+
+  it("cancelled from pending: pending then Cancelled, no future steps", () => {
+    const steps = buildTimeline(orderWith("cancelled", ["pending", "cancelled"]));
+    assert.equal(summary(steps), "pending:done cancelled:cancelled");
+    assert.deepEqual(steps.map((s) => s.changedAt), [at(1), at(2)]);
+  });
+
+  it("cancelled from confirmed and from processing: only what was reached", () => {
+    assert.equal(summary(buildTimeline(orderWith("cancelled", ["pending", "confirmed", "cancelled"]))), "pending:done confirmed:done cancelled:cancelled");
+    assert.equal(summary(buildTimeline(orderWith("cancelled", ["pending", "confirmed", "processing", "cancelled"]))), "pending:done confirmed:done processing:done cancelled:cancelled");
+  });
+
+  it("a cancelled order never shows shipped or delivered, and has no current or upcoming step", () => {
+    const steps = buildTimeline(orderWith("cancelled", ["pending", "confirmed", "cancelled"]));
+    assert.ok(!steps.some((s) => s.status === "shipped" || s.status === "delivered"));
+    assert.ok(steps.every((s) => s.state !== "upcoming" && s.state !== "current"));
+  });
+
+  it("cancelled without a cancel entry in the history: still ends with Cancelled, with no date", () => {
+    const steps = buildTimeline({ status: "cancelled", statusHistory: historyOf("pending") });
+    assert.equal(summary(steps), "pending:done cancelled:cancelled");
+    assert.equal(steps[1].changedAt, null);
+  });
+
+  it("gapped history: only statuses in the history are done; the gap is not shown as completed", () => {
+    const steps = buildTimeline(orderWith("shipped", ["pending", "shipped"]));
+    assert.equal(summary(steps), "pending:done confirmed:upcoming processing:upcoming shipped:current delivered:upcoming");
+    assert.equal(steps[1].changedAt, null);
+  });
+
+  it("empty, missing or odd history never crashes", () => {
+    assert.equal(summary(buildTimeline({ status: "confirmed", statusHistory: [] })), "pending:upcoming confirmed:current processing:upcoming shipped:upcoming delivered:upcoming");
+    assert.equal(buildTimeline({ status: "confirmed" })[1].state, "current");
+    assert.equal(buildTimeline({ status: "pending", statusHistory: "nope" })[0].state, "current");
+    assert.equal(buildTimeline({ status: "pending", statusHistory: [null, 5, {}, { status: 7 }, { status: "pending", changedAt: at(1) }] })[0].changedAt, at(1));
+    assert.equal(buildTimeline(null).length, 5);
+    assert.equal(buildTimeline(undefined).length, 5);
+    assert.ok(buildTimeline({ status: "mystery", statusHistory: historyOf("pending") }).every((s) => s.state !== "current"));
+  });
+
+  it("a bad date becomes null; a repeated status keeps its first time", () => {
+    const steps = buildTimeline({ status: "pending", statusHistory: [{ status: "pending", changedAt: "not a date" }] });
+    assert.equal(steps[0].changedAt, null);
+    const twice = buildTimeline({ status: "confirmed", statusHistory: [{ status: "pending", changedAt: at(1) }, { status: "confirmed", changedAt: at(2) }, { status: "confirmed", changedAt: at(9) }] });
+    assert.equal(twice[1].changedAt, at(2));
+  });
+
+  it("notes are never part of the result, and the order is not changed", () => {
+    const order = orderWith("confirmed", ["pending", "confirmed"]);
+    const before = JSON.stringify(order);
+    const steps = buildTimeline(order);
+    assert.equal(JSON.stringify(order), before);
+    assert.ok(!JSON.stringify(steps).includes("secret note"));
+    for (const step of steps) assert.deepEqual(Object.keys(step).sort(), ["changedAt", "state", "status"]);
   });
 });

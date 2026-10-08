@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../api/axiosClient.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import CancelOrderPanel from "../components/CancelOrderPanel.jsx";
 import OrderItemsList from "../components/OrderItemsList.jsx";
+import OrderTimeline from "../components/OrderTimeline.jsx";
 import formatPrice from "../utils/formatPrice.js";
 import getErrorMessage from "../utils/getErrorMessage.js";
 import { capitalize, formatOrderDate, getPaymentMethodName, getStatusBadgeClass } from "../utils/orderDisplay.js";
@@ -27,6 +29,8 @@ function OrderDetails() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  // What happened after the customer tried to cancel: { type: "ok" | "error", message }
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     let ignore = false; // stops an old request from overwriting a newer one
@@ -34,6 +38,7 @@ function OrderDetails() {
     const loadOrder = async () => {
       setLoading(true);
       setErrorMessage("");
+      setNotice(null);
       setOrder(null);
 
       try {
@@ -64,6 +69,28 @@ function OrderDetails() {
       ignore = true;
     };
   }, [id]);
+
+  // The server cancelled the order: show the order it sent back (it is the truth)
+  const handleCancelled = (updatedOrder, message) => {
+    setOrder(updatedOrder);
+    setNotice({ type: "ok", message: message || "Order cancelled" });
+  };
+
+  // The order can no longer be cancelled (for example the shop confirmed it a moment ago):
+  // load it again quietly, without a "Loading" screen, and explain what happened
+  const handleConflict = async (message) => {
+    setNotice({ type: "error", message: `${message} The order below has been refreshed.` });
+    try {
+      const response = await axiosClient.get(`/orders/${id}`);
+      setOrder(response.data.order);
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        logout();
+        return;
+      }
+      setNotice({ type: "error", message: `${message} Please reload this page to see the current order.` });
+    }
+  };
 
   const banner = justPlaced && (
     <div className="status status-ok order-banner" role="status">
@@ -121,6 +148,25 @@ function OrderDetails() {
         Placed on {placedAt} &middot;{" "}
         <span className={`badge ${getStatusBadgeClass(order.status)}`}>{capitalize(order.status)}</span>
       </p>
+
+      {notice && (
+        <div className={`status ${notice.type === "ok" ? "status-ok" : "status-error"}`} role={notice.type === "ok" ? "status" : "alert"}>
+          <p>
+            <strong>{notice.message}</strong>
+          </p>
+        </div>
+      )}
+
+      {/* The server decides whether this order can still be cancelled */}
+      {order.canCancel && (
+        <div className="order-actions">
+          <CancelOrderPanel order={order} onCancelled={handleCancelled} onConflict={handleConflict} />
+        </div>
+      )}
+
+      <div className="order-progress">
+        <OrderTimeline order={order} />
+      </div>
 
       <div className="cart-layout">
         <section className="checkout-section" aria-labelledby="items-heading">

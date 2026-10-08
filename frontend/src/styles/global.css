@@ -1455,3 +1455,122 @@ main > .status {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
 }
+
+/* ---------- Customer order timeline (Phase 7) ---------- */
+.order-progress {
+  margin: 1rem 0;
+}
+
+.order-timeline {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* small screens: a vertical line with a marker for every step */
+.timeline-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0 0 1rem 1.9rem;
+}
+
+.timeline-step:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-step::before {
+  content: "";
+  position: absolute;
+  top: 1.3rem;
+  bottom: -0.1rem;
+  left: 0.52rem;
+  width: 2px;
+  background: #e5e7eb;
+}
+
+.timeline-step:last-child::before {
+  display: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  top: 0.2rem;
+  left: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+}
+
+.timeline-label {
+  font-weight: 600;
+}
+
+.timeline-date {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.timeline-step-done::before {
+  background: #16a34a;
+}
+
+.timeline-step-done .timeline-marker {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.timeline-step-current .timeline-marker {
+  background: #2563eb;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #bfdbfe;
+}
+
+.timeline-step-upcoming .timeline-label {
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.timeline-step-cancelled .timeline-marker {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.timeline-step-cancelled .timeline-label {
+  color: #b91c1c;
+}
+
+/* wider screens: the steps side by side */
+@media (min-width: 700px) {
+  .order-timeline {
+    flex-direction: row;
+  }
+
+  .timeline-step {
+    flex: 1;
+    min-width: 0;
+    padding: 1.8rem 0.5rem 0 0;
+  }
+
+  .timeline-step:last-child {
+    padding-bottom: 0;
+  }
+
+  .timeline-step::before {
+    top: 0.5rem;
+    right: 0;
+    bottom: auto;
+    left: 1.2rem;
+    width: auto;
+    height: 2px;
+  }
+
+  .timeline-marker {
+    top: 0;
+  }
+}
