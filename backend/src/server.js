@@ -18,15 +18,21 @@ if (errors.length > 0) {
 const app = require("./app");
 const connectDB = require("./config/db");
 const { createShutdown, registerShutdownHandlers } = require("./utils/gracefulShutdown");
+const { connectWithRetry } = require("./utils/connectWithRetry");
 
 const PORT = values.port;
 
 const startServer = async () => {
+  // A few tries, then stop. Running without a database would leave the API "up" but useless for good
+  // (Mongoose does not try the first connection again), so the process ends with exit code 1 and a host
+  // that restarts failed processes can start it again. Nothing listens until the database is connected.
+  // (On Vercel this file is not used: app.js connects on the first request instead, see utils/ensureDatabase.js.)
   try {
-    await connectDB();
+    await connectWithRetry({ connect: connectDB });
   } catch (error) {
-    // Keep the API up so /api/health can report the database problem
-    console.error("MongoDB connection failed:", error.message);
+    console.error(error.message);
+    console.error("The server is stopping instead of running without a database. Check MONGODB_URI and the database's network access.");
+    process.exit(1);
   }
 
   const server = app.listen(PORT, () => {

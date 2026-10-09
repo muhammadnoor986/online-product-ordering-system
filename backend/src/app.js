@@ -11,6 +11,8 @@ const { notFound, errorHandler } = require("./middleware/errorHandler");
 const securityHeaders = require("./middleware/securityHeaders");
 const { createRequestLogger } = require("./middleware/requestLogger");
 const { parseTrustProxy, parseLogRequests } = require("./config/env");
+const connectDB = require("./config/db");
+const { createEnsureDatabase, createDatabaseMiddleware } = require("./utils/ensureDatabase");
 
 const app = express();
 
@@ -32,6 +34,18 @@ app.use(securityHeaders);
 // Only allow our React app to call this API
 app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
 app.use(express.json());
+
+// ONLY on Vercel (it sets VERCEL=1): there is no server.js start-up there, so every request makes sure the database
+// connection exists (made once per function instance and then reused). Everywhere else (npm start, the tests) this is
+// not added, and nothing changes. See "Deploying to Vercel" in README.md.
+if (process.env.VERCEL) {
+  const ensureDatabase = createEnsureDatabase({
+    isConnected: connectDB.isDatabaseConnected,
+    // A small pool: every function instance opens its own, and a free Atlas cluster allows only 500 connections in all
+    connect: () => connectDB({ maxPoolSize: 5 }),
+  });
+  app.use(createDatabaseMiddleware({ ensureDatabase }));
+}
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
