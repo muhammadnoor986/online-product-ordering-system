@@ -1,0 +1,10 @@
+{
+  "name": "online-production",
+  "private": true,
+  "description": "Repository-level commands. The backend and the frontend have their own package.json files; this one only adds shortcuts for running tests.",
+  "scripts": {
+    "test:backend": "npm --prefix backend test",
+    "test:frontend": "npm --prefix frontend test",
+    "test:e2e": "node e2e/run.js"
+  }
+}

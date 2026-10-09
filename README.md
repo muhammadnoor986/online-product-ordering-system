@@ -234,8 +234,68 @@ Test data is removed when the run finishes.
 
 - The login limiter keeps its counts in the memory of one server process (see "Account security"); several server instances need a shared store.
 - There is no signup throttling and no e-mail verification or password reset.
-- The checks that exercise the shop in a real browser are not part of this repository yet, and there is no automatic test run (CI).
+- Twelve browser (E2E) suites are in this repository (see "End-to-end browser tests" below), but that work is still in progress: Phase 10 is not complete, and there is no automatic test run (CI).
 - Online payments, e-mail and image uploads (products use image addresses) are not built.
+
+### End-to-end browser tests (Phase 10, work in progress)
+
+These tests open the real website in a headless Edge or Chrome and click through it. They are being moved
+into this repository step by step: **so far twelve suites are migrated**. Admin orders screens: `step3List` (the orders list),
+`step4Details` (one order's page), `step5Actions` (changing an order's status and cancelling it). Admin product and category screens:
+`phase3cE2E` (who may open them, lists, forms, deactivating, failures, screen widths), `staleFormE2E` (the edit form never brings back sold stock). Customer screens:
+`phase3bE2E` (the product listing, search, filters, paging, product details, sign up and login),
+`step7aCancel` (cancelling your own order), `step7bTimeline` (the order progress timeline), `step7cProfile` (the profile page), `myOrdersE2E` (the My Orders list and its details links), `cartE2E` (the shopping cart), `checkoutE2E` (checkout and the order page, including lost answers and server refusals).
+The checkout suite was migrated with state-based waits instead of the old sleeps (it waits for the cart count, the Place Order button,
+the order page and the browser's own "network quiet" signal). **Phase 10 is still in progress**; it is not marked complete.
+One check, `phase3cE2E` section G (failed requests), failed once in a complete run and has not failed since. It was made stricter
+(it now waits for the page to settle and for the exact "Try again" button), but the cause was never reproduced, so it is **not** known to be
+permanently fixed. If it fails again, the failure message shows the address, the page text and the latest API calls.
+
+From the repository root, three shortcuts exist (they are defined in the root `package.json`):
+
+```bash
+npm run test:backend                # the backend tests (runs "npm test" in backend/)
+npm run test:frontend               # the frontend tests (runs "npm test" in frontend/)
+npm run test:e2e                    # all migrated browser suites (currently twelve)
+npm run test:e2e -- step4Details    # only the suites whose file name contains this text
+```
+
+(Run it from the repository root. There is no `npm install` for this: it uses Node's built-in features and the
+packages the backend and frontend already have.)
+
+- **Needs:** Node.js 22 or newer, Microsoft Edge or Google Chrome (set `E2E_BROWSER` to the program's full path if it is not found automatically),
+  the backend and frontend dependencies installed, and a running MongoDB server (the one in `backend/.env` is used, or set `E2E_MONGODB_URI`).
+- **It never touches your development setup.** Every run starts its **own** backend and frontend on free ports (never 5000 or 5173),
+  with a random JWT secret, and creates a **new** MongoDB database named `online_production_test_e2e_<id>` on the same server.
+  That database (and the temporary browser profile) is deleted when the run ends. The runner refuses to continue if the database name
+  does not contain "test", equals the development database, or is not one of its own per-run databases.
+  Your `.env` is only read to find the MongoDB server; nothing is written to it.
+- On a slow or very busy machine, `E2E_TIMEOUT_SCALE=3` (or more) multiplies every waiting limit. Waits still end as soon as their event happens.
+- `E2E_SCREENSHOTS=1` saves screenshots into `e2e/artifacts/` (ignored by Git).
+- **Cleanup limits.** A normal end, a failing test and Ctrl+C (`SIGINT`) or `SIGTERM` all stop the servers and browser, drop the run's
+  database and remove the temporary folder. Cleanup is not guaranteed, though. If the runner itself is killed without warning (closing the
+  terminal window, Task Manager, `taskkill /F`, a crash or power loss) nothing runs, and these can remain: the run's database
+  `online_production_test_e2e_<id>`, a folder `online-e2e-...` in your temporary folder (browser profiles, nothing else), and possibly
+  a backend, frontend or browser process of that run. A database that cannot be dropped, or a folder Windows still holds open,
+  is reported at the end of the run; the folder is only a warning, so a run can still pass with a folder left behind.
+- **Cleaning up a leftover test database.** The development database is never touched by a run, and it must never be dropped by hand.
+  1. Make sure no E2E run is still going (otherwise end it with Ctrl+C) and that no leftover `node` or browser process of an old run is
+     still running; a running backend keeps its database open.
+  2. List the databases (for example `mongosh "<your connection string>" --eval "db.adminCommand({listDatabases:1,nameOnly:true}).databases.map(d=>d.name)"`).
+     A name that matches **exactly** `online_production_test_e2e_<letters-and-digits>_<letters-and-digits>` is only a *candidate*.
+     **Never drop a database because of its name alone.** These are protected and must never be dropped by hand: the development
+     database (the one named in `backend/.env`, or MongoDB's default `test` when that file names none), the plain
+     `online_production_test` database used by the backend tests, and any name you do not recognise or that does not match exactly.
+  3. Before dropping a candidate, look inside it and confirm it holds only test data: its users should have e-mails such as
+     `zze2e....@example.com`, and its products and categories should have names starting with `ZZE2E`. An empty database is fine.
+     If anything looks like real data, or you are unsure, stop and do not drop it.
+  4. Drop only that one database. Open a shell on exactly that database (`mongosh "<your connection string>/<that exact name>"`), run
+     `db.getName()` and check that it prints the leftover's name, and only then run `db.dropDatabase()`.
+  5. Delete the matching `online-e2e-*` folders in your temporary folder (`%TEMP%` on Windows). They only contain browser profiles,
+     but close any browser still using them first.
+
+  The runner uses the same rule before it drops anything, but this rule only checks the name: it cannot prove who created a database.
+  Do not give other databases names of this form.
 
 ## 3. Run the frontend
 

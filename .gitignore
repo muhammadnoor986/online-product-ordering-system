@@ -10,6 +10,9 @@ node_modules/
 dist/
 build/
 
+# E2E test artifacts (screenshots are only saved when E2E_SCREENSHOTS=1)
+e2e/artifacts/
+
 # Logs
 *.log
 npm-debug.log*
