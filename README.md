@@ -311,13 +311,13 @@ Atlas only accepts connections from addresses on its **IP access list**. A Verce
 #### Before you start
 - A GitHub account with this repository, a Vercel account (Hobby) and an Atlas account. Do not add a payment method or start a trial. Check each provider's **current** free-plan terms yourself.
 - **No real customer data.** Use only made-up accounts and products on the deployed demo, because its database is reachable from anywhere while the temporary rule exists.
-- Use a **new Atlas project** and database user for this deployment (for example database name `online_production_demo`), with a new strong password.
+- Use a **new Atlas project** and database user for this deployment (for example database name `online_production_staging`), with a new strong password.
 - Never paste a connection string, password or secret into a file in this repository, into an issue or into a chat.
 
 #### Step 1: the database (Atlas)
 1. Create a **new Atlas project** and a free cluster in it. Choose a region near where the API will run.
-2. **Database Access** → add a database user with a strong, new password, limited to **only the deployment database** (read and write on `online_production_demo`, not "Atlas admin").
-3. Copy the connection string and put the database name in it (`.../online_production_demo?retryWrites=true&w=majority`). URL-encode special characters in the password and keep it private.
+2. **Database Access** → add a database user with a strong, new password, limited to **only the deployment database** (read and write on `online_production_staging`, not "Atlas admin").
+3. Copy the connection string and put the database name in it (`.../online_production_staging?retryWrites=true&w=majority`). URL-encode special characters in the password and keep it private.
 4. **Network Access:** do **not** add anything yet. When you are ready to test the deployed site (after Steps 2 and 3), add **one temporary** entry for `0.0.0.0/0` with the shortest expiry Atlas offers, as described above. Do not add a permanent entry. If you later switch to a narrower rule (a different host with fixed addresses, or a paid plan), remove this entry.
 
 #### Step 2: the API project on Vercel
